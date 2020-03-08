@@ -1,0 +1,11 @@
+*----------------------------------------------------------------*
+* COPY DO ARQUIVO DE SAIDA DE DISTRIBUICAO                       *
+*----------------------------------------------------------------*
+
+FD ARQ-SAIDA.
+01 AS-ARQ-SAIDA.
+    05 ARQ-COD-CLI-SAIDA            PIC  9(007).
+    05 ARQ-RAZAO-CLI-SAIDA          PIC  9(014).
+	05 ARQ-COD-VEND-SAIDA           PIC  9(007).
+	05 ARQ-NOME-VEND-SAIDA          PIC  X(040).
+    05 ARQ-DIST-SAIDA               PIC  9(009)

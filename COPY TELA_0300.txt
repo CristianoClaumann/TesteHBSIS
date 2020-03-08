@@ -1,0 +1,23 @@
+         1         2         3         4         5         6
+1234567890123456789012345678901234567890123456789012345678901234567890
+*----------------------------------------------------------------*
+* COPY DA TELA DE CADASTRO DE VENDENDORES                           *
+*----------------------------------------------------------------*
+
+01  AS-TELA-CAD-VEND.
+        05  LINE  2 COL 10 VALUE "CADASTRO DE VENDEDORES".
+        05  LINE  4 COL 06 VALUE "CODIGO VENDEDOR..:_______".
+        05  LINE  4 COL 24 PIC X USING AS-COD-VEND-TELA.
+        05  LINE  5 COL 06 VALUE "CPF..............:______________".
+        05  LINE  5 COL 24 VALUE AS-CPF-VEND-TELA.
+        05  LINE  6 COL 06 VALUE "NOME VENDEDOR....:_____________________________________"
+        05  LINE  6 COL 24 VALUE AS-NOME-VEND-TELA.
+        05  LINE  7 COL 06 VALUE "LATITUDE........:___________ ".
+        05  LINE  7 COL 24 VALUE AS-LAT-VEND-TELA.
+        05  LINE  8 COL 06 VALUE "LONGITUDE.......:___________ ".
+        05  LINE  8 COL 24 VALUE AS-LONG-VEND-TELA.
+		05  LINE  9 COL 06 VALUE "NOME ARQUIVO....:_____________________________________ ".
+        05  LINE  9 COL 24 VALUE AS-NOME-ARQ-TELA.
+		05  LINE 11 COL 06 VALUE "DIGITE A OPÇÃO..:_ (1(INCLUIR / 2-ALTERAR / 3-EXCLUIR / 4-IMPORTAR".
+        05  LINE 11 COL 24 VALUE AS-OPCAO-TELA.
+        05  MENSAGEM LINE 01 COL 02 PIC X(050) USING AS-MSG-TELA.

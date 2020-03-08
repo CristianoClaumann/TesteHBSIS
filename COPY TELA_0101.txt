@@ -1,0 +1,14 @@
+*----------------------------------------------------------------*
+* COPY DA TELA DO PGM PRINCIPAL                                  *
+*----------------------------------------------------------------*
+
+01  TEL-0101.
+		05  AS-MSG-TELA LINE 1 COL 2 PIC X(60).
+        05  LINE  2 COL 10 VALUE "GERECIAMENTO DA CARTEIRA DE CLIENTES".
+        05  LINE  6 COL 20 VALUE "1- CADASTRO DE CLIENTES".
+		05  LINE  7 COL 20 VALUE "2- CADASTRO DE VENDEDORES".
+		05  LINE  8 COL 20 VALUE "3- RELATORIO DE CLIENTES".
+		05  LINE  9 COL 20 VALUE "4- RELATORIO DE VENDEDORES".
+		05  LINE 10 COL 20 VALUE "5- EXECUTAR DISTRIBUICAO".
+	    05  LINE 14 COL 20 VALUE "DIGITE A OPCAO DESEJADA:_".
+		05  AS-CAMPO-TELA LINE 10  COL 28 PIC 9(01)

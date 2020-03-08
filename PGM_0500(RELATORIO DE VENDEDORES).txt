@@ -1,0 +1,267 @@
+
+*----------------------------------------------------------------*
+ IDENTIFICATION 				DIVISION.
+ PROGRAM-ID. 					PGM_0500.
+*----------------------------------------------------------------*
+ ENVIRONMENT 					DIVISION.
+ CONFIGURATION 					SECTION.
+*----------------------------------------------------------------*
+ SPECIAL-NAMES.
+ 	DECIMAL-POINT 				IS COMMA.
+
+ INPUT-OUTPUT					SECTION.
+
+ FILE-CONTROL.
+    SELECT ARQ-VENDEDORES  ASSIGN TO DISK WID-ARQ-VENDEDORES
+    ORGANIZATION                IS INDEXED
+    ACESS MODE                  IS DYNAMIC
+    LOCK MODE                   IS MANUAL
+    FILE STATUS                 IS AS-FS-VEND.
+	
+	SELECT SORT-VEND ASSIGN TO "SORT-VEND.DAT"
+	SORT STATUS IS FS-SORT-VEND
+
+*----------------------------------------------------------------*
+ DATA 							DIVISION.
+
+    FILE 						SECTION.
+    
+    COPY ARQ-VENDEDORES.
+	
+	SD SORT-VEND
+	01 SORT-REG-CLIENTES 
+	   10 SORT-COD-VEND          PIC  9(007).
+	   10 SORT-NOME-VEND         PIC  X(040).
+	  
+	   
+*----------------------------------------------------------------*
+  LINKAGE						SECTION.
+
+	01 VARIAVEIS-LINKAGE.
+		05 AS-MSG-TELA			PIC  X(060).
+
+ SCREEN 					    SECTION.
+*----------------------------------------------------------------*
+	
+	COPY TELA-0500-1.
+   
+   	COPY TELA-0500-2.    
+
+	COPY ARQ-VENDEDORES.	
+
+ WORKING-STORAGE 				SECTION.
+*----------------------------------------------------------------*
+    
+    01  VARIAVEIS-WORKING.
+		05 AS-VAR-RELATORIOS OCCURS 15 TIMES
+			10 AS-COD-VEND         PIC  9(007).
+			10 AS-NOME-VEND        PIC  X(040).
+	
+			
+	01 AS-RESULTADO-CLI-VEND.
+        05 AS-FS-CLI-VEND		PIC  X(002).
+		05 AS-FS-SORT-VEND        PIC  X(002).
+		
+	01 AS-AUXILIARES		
+		05 AS-MSG-TELA			PIC  X(060) VALUE SPACES.  
+		05 AS-OPCAO-TELA			PIC  9(001) VALUE ZEROS.
+		05 AS-CONT               PIC  9(003).		
+
+    
+*----------------------------------------------------------------*
+ PROCEDURE DIVISION				USING AS-MSG-TELA.
+
+ 00000-PRINCIPAL			    SECTION.
+
+ 	PERFORM 10000-INICIALIZA
+	
+	PERFORM 20000-PROCESSA
+	
+	PERFORM 90000-FINALIZA
+ 	.
+ 99999-FIM-PRINCIPAL.            EXIT.
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 10000-INICIALIZA 					SECTION.
+           
+ 	INITIALIZE VARIAVEIS-WORKING
+
+	OPEN ARQ-VENDEDORES
+
+	DISPLAY ERASE
+
+	PERFORM 11000-MOSTRA-TELA
+	
+    .
+  19999-FIM-INICIALIZA.            EXIT.
+*----------------------------------------------------------------*
+  
+*----------------------------------------------------------------*
+ 11000-MOSTRA-TELA             SECTION.
+           
+ 	DISPLAY TELA-0500-1
+    
+    ACCEPT TELA-0500-1
+	
+	PERFORM 11100-VALIDA-TELA-REL
+	
+    .
+  11999-FIM-INICIA.            EXIT.  
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 11100-VALIDA-TELA-REL        SECTION.
+
+	IF  (AS-OPCAO-ORDENACAO NOT EQUAL 1 OR 2)
+	OR  (AS-OPCAO-CLASSIFICACAO NOT EQUAL 1 OR 2)
+	   	MOVE 'SELECIONE AS OPCOES ORDENACAO E CLASSIFICACA' TO AS-MSG-ERRO
+	    PERFORM 11100-MOSTRA-TELA
+	ELSE
+ 		IF   AS-OPCAO-COD-VEND          NOT EQUAL ZEROS
+		AND	 AS-OPCAO-NOME-VEND         NOT EQUAL SPACES
+			 MOVE 1                     TO AS-TIPO-PESQUISA
+	    ELSE
+		     IF   AS-OPCAO-COD-VEND     NOT EQUAL ZEROS
+			      MOVE 2                TO AS-TIPO-PESQUISA
+		     ELSE
+		        IF  AS-OPCAO-NOME-VEND  NOT EQUAL SPACES
+     		        MOVE 3              TO AS-TIPO-PESQUISA
+                ELSE 		
+                    MOVE 4              TO AS-TIPO-PESQUISA 
+		        END-IF 	 		
+             END-IF
+        END-IF
+	END-IF	
+   	
+	READ ARQ-VENDEDORES
+	.
+
+    11999-FIM-VALIDA-TELA-REL	
+*----------------------------------------------------------------*
+ 
+*----------------------------------------------------------------*
+ 2000-PROCESSA  SECTION.
+ 
+	 EVALUATE   AS-OPCAO-ORDENACAO  
+	 
+		 WHEN 1
+		 
+			EVALUATE AS-OPCAO-CLASSIFICACAO
+			
+				WHEN 1
+				     INPUT PROCEDURE IS 30000-CARRREGAR-SORT UNTIL AS-FS-CLI-VEND 	
+	                                     NOT EQUAL '00'
+					 OUTPUT PROCEDURE IS 40000-DESCARREGAR-SORT
+					 
+				WHEN 2	 
+				     SORT SORT-VEND ASCENDING  SORT-NOME-VEND
+					 INPUT PROCEDURE IS 30000-CARRREGAR-SORT UNTIL AS-FS-CLI-VEND 	
+	                                     NOT EQUAL '00'
+				     OUTPUT PROCEDURE IS 40000-DESCARREGAR-SORT
+			END-EVALUATE	
+			
+		WHEN 2			 
+	 
+	         EVALUATE AS-OPCAO-CLASSIFICACAO
+			 
+				WHEN  1
+				      SORT SORT-VEND DESCENDING  SORT-COD-VEND
+					  INPUT PROCEDURE IS 30000-CARRREGAR-SORT UNTIL AS-FS-CLI-VEND 	
+	                                     NOT EQUAL '00'
+				      OUTPUT PROCEDURE IS 40000-DESCARREGAR-SORT
+					  
+				WHEN 2	  
+				    SORT SORT-VEND ASCENDING  SORT-NOME-VEND
+					INPUT PROCEDURE IS 30000-CARRREGAR-SORT UNTIL AS-FS-CLI-VEND 	
+	                                     NOT EQUAL '00'
+					OUTPUT PROCEDURE IS 40000-DESCARREGAR-SORT 
+			END-EVALUATE	
+				
+    END-EVALUATE
+ 	.
+
+ 29999-FIM-PROCESSA	
+ *----------------------------------------------------------------*
+ 
+*----------------------------------------------------------------*
+ 30000-CARRREGAR-SORT			  SECTION.
+
+
+	EVALUATE AS-TIPO-PESQUISA
+	
+    WHEN 1
+		
+	    IF   AS-OPCAO-COD-VEND     EQUAL AS-ARQVEND-COD	
+	    AND  AS-OPCAO-NOME-VEND    EQUAL AS-ARQVEND-NOME
+	  	     MOVE AS-ARQ-VEND-COD  TO SORT-COD-VEND
+		     MOVE AS-ARQVEND-NOME  TO SORT-NOME-VEND	
+		     RELEASE  SORT-REG-CLIENTES 		
+	    END-IF
+		
+	WHEN 2
+	
+	    IF   AS-OPCAO-COD-VEND       EQUAL AS-ARQVEND-COD	
+	         MOVE AS-ARQ-VEND-COD    TO SORT-COD-VEND
+		     MOVE AS-ARQVEND-NOME    TO SORT-NOME-VEND	
+		   	 RELEASE  SORT-REG-CLIENTES	
+	    END-IF
+		
+    WHEN 3
+	
+	    IF   AS-OPCAO-NOME-VEND         EQUAL AS-ARQVEND-NOME	
+	         MOVE AS-ARQ-VEND-COD     TO SORT-COD-VEND
+		     MOVE AS-ARQVEND-NOME     TO SORT-NOME-VEND	
+			 RELEASE  SORT-REG-CLIENTES	
+	    END-IF
+		
+	WHEN 4
+	 		 MOVE AS-ARQVEND-COD      TO SORT-COD-VEND
+			 MOVE AS-ARQVEND-NOME     TO SORT-NOME-VEND	
+			 RELEASE  SORT-REG-CLIENTES	
+	END-EVALUATE	
+	     
+	READ ARQ-VENDEDORES	
+	
+    .	
+ 39999-FIM-CARRREGAR-SORT.            	EXIT.
+ 
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 40000-DESCARREGAR-SORT				SECTION.
+ 
+	PERFORM 31000-DESCARREGA-SORT UNTIL FS-SORT-VEND EQUAL "10"
+	                              OR AS-CONT GREATER THAN 15
+	
+		
+	DISPLAY TELA-0500-2
+	.
+ 39999-FIM-DESCARREGA-RELATORIO. 	EXIT.
+ 
+ *----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 31000-DESCARREGA-SORT               SECTION.
+ 
+	ADD 1                   TO  AS-CONT
+	
+	RETURN SORT-VEND AT END MOVE "10" TO FS-SORT-VEND
+
+	MOVE SORT-COD-VEND       TO AS-COD-VEND(AS-CONT)
+	MOVE SORT-NOME-VEND      TO AS-NOME-VEND(AS-CONT)
+	
+	.
+ 31999-FIM-DESCARREGA-RELATORIO. EXIT.
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 90000-FINALIZA SECTION.
+ 
+	CLOSE ARQ-VENDEDORES
+
+	GO BACK
+	.
+ 99999-FIM-FINALIZE. EXIT.
+ 
+ 

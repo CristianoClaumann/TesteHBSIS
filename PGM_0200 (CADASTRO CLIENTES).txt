@@ -1,0 +1,381 @@
+* CAD/ASTRO DE CLIENTES INCLUIR/ ALTERAR / EXCLUIR E IMPORTAR
+*----------------------------------------------------------------*
+ IDENTIFICATION 				DIVISION.
+ PROGRAM-ID. 					PGM_0200.
+*----------------------------------------------------------------*
+ ENVIRONMENT 					DIVISION.
+ CONFIGURATION 					SECTION.
+*----------------------------------------------------------------*
+ SPECIAL-NAMES.
+ 	DECIMAL-POINT 				IS COMMA.
+
+ INPUT-OUTPUT					SECTION.
+
+ FILE-CONTROL.
+    
+	SELECT ARQ-CLIENTES ASSIGN TO DISK WID-ARQ-CLIENTES
+		ORGANIZATION                IS INDEXED
+		ACESS MODE                  IS DYNAMIC
+		RECORD-KEY                  IS AS-CNPJ-CLI
+		LOCK MODE                   IS MANUAL
+		FILE STATUS                 IS W-RESULTADO-CLIENTE.
+	
+	SELECT ARQ-IMPORT-CLI ASSIGN  TO DISK AS-ARQ-IMPORT
+        ORGANIZATION            IS INDEXED
+        ACESS MODE              IS SEQUENCIAL
+        RECORD-KEY              IS AS-ARQ-IMP-CNPJ
+        LOCK MODE               IS MANUAL
+        FILE STATUS             IS AS-FS-IMPORT.
+
+ 
+*----------------------------------------------------------------*
+ DATA 							DIVISION.
+
+    FILE 						SECTION.
+	
+	COPY ARQ-CLI
+	
+	COPY IMP-CLI.
+      
+
+ WORKING-STORAGE 				SECTION.
+*----------------------------------------------------------------*
+    
+    01 W-RESULTADO-CLIENTE.
+        05 AS-FS-ARQ-CLI              PIC  X(002).
+		
+    01 W-RESULTADO-IMPORT.
+        05 AS-FS-IMPORT               PIC  X(002).
+		
+	01 AS-AUXILIARES		
+	   05 AS-CONTROLE                 PIC  9(005) VALUE ZEROS.
+		
+	01 AS-CNPJ-VALIDA.	
+		05 AS-VALIDA-CNPJ             PIC  9(014) VALUE ZEROS.
+	
+	SCREEN 					SECTION.
+	
+	
+	COPY TELA-0200.		
+	   
+*----------------------------------------------------------------*
+ PROCEDURE DIVISION                 USING VARIAVEIS-LINKAGE.
+
+ 0000-PRINCIPAL SECTION.
+
+ 	PERFORM 1000-INICIALIZA
+	
+	PERFORM 2000-PROCESSA
+	
+	PERFORM 3000-FINALIZA
+										 
+ 	.
+ 99999-FIM-PRINCIPAL.            EXIT.
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 1000-INICIALIZA 					SECTION.
+           
+ 	OPEN INPUT	ARQ-IMPORT-CLI
+		 I-O	ARQ-CLIENTES
+	
+	INITIALIZE TEL-0200
+
+	DISPLAY ERASE
+
+	PERFORM 1100-MOSTRA-TELA
+	
+    .
+  19999-FIM-INICIALIZA.            EXIT.
+  
+*----------------------------------------------------------------*
+* MOSTRA TELA 
+*----------------------------------------------------------------*
+ 1100-MOSTRA-TELA             SECTION.
+           
+ 	MOVE ZEROS                TO AS-CONTROLE
+	
+	DISPLAY TEL-CAD-CLI
+    
+    ACCEPT AS-TELA-CAD-CLI
+	
+	PERFORM 1110-VALIDA-TELA
+	
+    .
+  1199-FIM-INICIA.            EXIT.  
+  
+*----------------------------------------------------------------*
+* VALIDA A OPCAO DIGITADA PELO USUARIO
+*----------------------------------------------------------------*
+ 1110-VALIDA-TELA			 SECTION.
+
+	MOVE SPACES              TO AS-MSG-TELA
+	
+	IF TECLA-PF    EQUAL 'PF3'
+	    CALL PGM_0101
+    END-IF		
+ 
+    IF  AS-OPCAO-TELA        EQUAL 4
+	    AND AS-NOME-ARQ-TELA EQUAL SPACES	
+	        MOVE 'DIGITE UM NOME DE ARQUIVO VALIDO' TO AS-MSG-TELA
+	ELSE	  
+	    IF AS-OPCAO-TELA NOT NUMERIC 
+		OR AS-OPCAO-TELA EQUAL ZEROS
+		OR AS-OPCAO-TELA NOT LESS 5
+		OR AS-OPCAO-TELA LESS 1
+			MOVE 'DIGITE UMA OPCAO VALIDA' TO AS-MSG-TELA
+		END-IF
+
+		IF AS-COD-CLI-TELA NOT NUMERIC 
+		OR AS-COD-CLI-TELA EQUAL ZEROS
+			MOVE 'DIGITE UM CODIGO VALIDO' TO AS-MSG-TELA	
+		END-IF
+	
+		IF AS-CNPJ-CLI-TELA NOT NUMERIC 
+		OR AS-CNPJ-CLI-TELA EQUAL ZEROS
+			MOVE 'DIGITE UM CNPJ VALIDO' TO AS-MSG-TELA
+		END-IF
+	
+		IF AS-RAZAO-CLI-TELA EQUAL SPACES 
+			MOVE 'DIGITE UMA RAZAO SOCIAL VALIDA' TO AS-MSG-TELA
+		END-IF
+	
+		IF AS-LAT-CLI-TELA NOT NUMERIC 
+		OR AS-LONG-CLI-TELA NOT NUMERIC
+			MOVE 'DIGITE LATITUDE E LONGITUDE' TO AS-MSG-TELA
+		END-IF
+		
+     	IF AS-MSG-TELA NOT EQUAL SPACES 
+		   PERFORM 1110-MOSTRA-TELA
+		END-IF   
+	END-IF
+	
+	.
+
+ 1199-FIM-VALIDA-TELA-REL	
+
+*----------------------------------------------------------------*
+* PROCESSA DE ACORDO COM A OPCAO CHAMA PGM DE CAD DE CLI OU VEND
+*----------------------------------------------------------------*
+ 2000-PROCESSA  SECTION.
+
+	EVALUATE AS-OPCAO-TELA
+
+* INCLUIR CLIENTE
+	
+    WHEN 1
+	     		
+	    PERFORM 2100-PROCESSA-INCLUSAO    
+
+* ALTERAR CLIENTE
+	
+	WHEN 2
+
+		PERFORM 2200-PROCESSA-ALTERACAO
+		
+* EXCLUIR CLIENTE
+
+	WHEN 3
+	
+	    PERFORM 2300-PROCESSA-EXCLUSAO
+		
+* IMPORTACAO DE CLIENTES
+
+	WHEN 4
+	
+	    PERFORM 2400-PROCESSA-IMPORTACAO
+		        UNTIL AS-FS-IMPORT EQUAL '10'
+		
+	END-EVALUATE	
+	     
+    .	
+ 2999-FIM-PROCESSA.            	EXIT.
+ 
+*----------------------------------------------------------------*
+* INCLUSAO DE CLIENTE
+*----------------------------------------------------------------*
+ 2100-PROCESSA-INCLUSAO         SECTION.
+
+	MOVE AS-CNPJ-CLI-TELA            TO AS-VALIDA-CNPJ
+	                                    ARQ-CNPJ-CLI
+ 
+	PERFORM 7777-VALIDA-CNPJ
+	
+	PERFORM 8888-LER ARQUIVO
+ 
+	 IF AS-FS-ARQ-CLI      EQUAL '00' OR '10'
+	    IF  AS-FS-ARQ-CLI  EQUAL '00'
+		AND ARQ-COD-CLI    NOT EQUAL AS-COD-CLI-TELA
+		   MOVE 'MESMO CNPJ PARA CLIENTES DIFERENTES' TO AS-MSG-TELA
+	       PERFORM 1110-MOSTRA-TELA
+		   PERFORM 2000-PROCESSA
+		ELSE
+	       MOVE AS-COD-CLI-TELA            TO ARQ-COD-CLI
+	       MOVE AS-CNPJ-CLI-TELA           TO ARQ-CNPJ-CLI
+	       MOVE AS-RAZAO-CLI-TELA          TO ARQ-RAZAO-CLI
+	       MOVE AS-LAT-CLI-TELA-TELA       TO ARQ-LAT-CLI
+	       MOVE AS-LONG-CLI-TELA           TO ARQ-LONG-CLI
+	 
+	       WRITE ARQ-CLIENTES
+	 
+	       MOVE 'INCLUSAO EFETUADA COM SUCESSO!'  TO AS-MSG-TELA
+	 
+	       PERFORM 1100-MOSTRA-TELA
+		END-IF   
+	 END-IF
+		 
+     	.
+ 2199-FIM-FINALIZE. EXIT.
+ 
+  
+ *----------------------------------------------------------------*
+* ALTERACAO DE CLIENTE
+*----------------------------------------------------------------*
+ 2200-PROCESSA-ALTERACAO         SECTION.
+
+	 MOVE AS-CNPJ-CLI-TELA            TO AS-VALIDA-CNPJ
+	                                     ARQ-CNPJ-CLI
+		                                 
+	 PERFORM 7777-VALIDA-CNPJ
+	
+	 PERFORM 8888-LER ARQUIVO
+ 
+	 IF AS-FS-ARQ-CLI NOT EQUAL '00'
+		MOVE 'REGISTRO NÃO ENCONTRADO'  TO AS-MSG-TELA
+	    PERFORM 1110-MOSTRA-TELA
+		PERFORM 2000-PROCESSA
+	 ELSE	  
+	    IF ARQ-COD-CLI NOT EQUAL AS-COD-CLI-TELA
+		   MOVE 'MESMO CNPJ PARA CLIENTES DIFERENTES' TO AS-MSG-TELA
+	       PERFORM 1110-MOSTRA-TELA
+		   PERFORM 2000-PROCESSA
+		ELSE   
+  
+			MOVE AS-COD-CLI-TELA            TO ARQ-COD-CLI
+			MOVE AS-CNPJ-CLI-TELA           TO ARQ-CNPJ-CLI
+			MOVE AS-RAZAO-CLI-TELA          TO ARQ-RAZAO-CLI
+			MOVE AS-LAT-CLI-TELA            TO ARQ-LAT-CLI
+			MOVE AS-LONG-CLI-TELA           TO ARQ-LONG-CLI
+	 
+			REWRITE ARQ-CLIENTESS
+	 
+			MOVE 'ALTERAÇÃO EFETUADA COM SUCESSO!'  TO AS-MSG-TELA
+	 
+			PERFORM 1100-MOSTRA-TEL
+		END-IF	
+	 END-IF	
+ 
+		.
+ 2299-FIM-FINALIZE. EXIT.
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+* EXCLUSAO DE CLIENTE
+*----------------------------------------------------------------*
+ 2300-PROCESSA-EXCLUSAO         SECTION.
+	
+	MOVE AS-CNPJ-CLI-TELA            TO AS-VALIDA-CNPJ
+	                                    ARQ-CNPJ-CLI
+	
+	PERFORM 7777-VALIDA-CNPJ
+	
+	PERFORM 8888-LER ARQUIVO
+ 
+	 IF AS-FS-ARQ-CLI EQUAL '00'
+	 
+		DELETE ARQ-CLIENTES
+		
+     ELSE	
+		MOVE 'REGISTRO NÃO ENCONTRADO'  TO AS-MSG-TELA
+	    PERFORM 1110-MOSTRA-TELA
+		PERFORM 2000-PROCESSA
+	 END-IF
+  
+     MOVE 'EXCLUSÃO EFETUADA COM SUCESSO!'  TO AS-MSG-TELA
+	 
+	 PERFORM 1100-MOSTRA-TEL
+	
+	 .
+ 2399-FIM-FINALIZE. EXIT.
+ 
+*----------------------------------------------------------------*
+* PROCESSA IMPORTACAO DE ARQUIVO DE CLIENTES
+*----------------------------------------------------------------*
+ 2400-PROCESSA-IMPORTACAO         SECTION.
+
+	 MOVE AS-NOME-ARQ-TELA    TO     AS-ARQ-IMPORT
+	 
+	 READ ARQ-IMPORT-CLI
+		 
+	 IF AS-FS-IMPORT EQUAL '00' 
+	 
+	    MOVE AS-ARQIMP-CNPJ        TO ARQ-CNPJ-CLI 
+		                              AS-VALIDA-CNPJ
+									  
+		PERFORM 7777-VALIDA-CNPJ							  
+		
+		PERFORM 8888-LER ARQUIVO
+		
+		IF  (AS-FS-ARQ-CLI         EQUAL '00' 
+		AND  AS-ARQIMP-CNPJ        EQUAL ARQ-CNPJ-CLI
+		AND  AS-ARQIMP-COD         EQUAL ARQ-COD-CLI)
+		OR  (AS-FS-ARQ-CLI         EQUAL '10')			
+		
+		    MOVE AS-ARQIMP-COD     TO ARQ-COD-CLI
+		    MOVE AS-ARQIMP-CNPJ    TO ARQ-CNPJ-CLI
+		    MOVE AS-ARQIMP-RAZAO   TO ARQ-RAZAO-CLI
+		    MOVE AS-ARQIMP-LAT     TO ARQ-LAT-CLI
+		    MOVE AS-ARQIMP-LONG    TO ARQ-LONG-CLI
+		    ADD 1                  TO AS-CONTROLE
+	 	    WRITE ARQ-CLIENTES
+		   
+		END-IF   
+	 ELSE
+		IF AS-FS-IMPORT           EQUAL '10'
+		AND AS-CONTROLE           GREATE ZEROS
+		    MOVE 'ARQUIVO IMPORTADO COM SUCESSO'   TO AS-MSG-TELA
+	        PERFORM 1110-MOSTRA-TELA
+		END-IF	  
+	 END-IF
+	 
+		.
+ 2499-FIM-FINALIZE. EXIT.
+ 
+*----------------------------------------------------------------*
+* VALIDA CNPJ 
+*----------------------------------------------------------------*
+ 7777-VALIDA-CNPJ         SECTION.
+
+	CALL VALIDA-CNPJ  USING AS-CNPJ-VALIDA
+	
+	IF AS-RETORNO NOT EQUAL ZEROS
+	   MOVE 'CNPJ INVALIDO'   TO AS-MSG-TELA
+	   PERFORM 1110-MOSTRA-TELA
+	   PERFORM 2000-PROCESSA
+	END-IF
+
+		.
+ 7799-FIM-FINALIZE. EXIT.
+ 
+*----------------------------------------------------------------*
+* LER ARQUIVO
+*----------------------------------------------------------------*
+ 8888-LER-ARQUIVO         SECTION.
+
+	READ ARQ-CLIENTES
+		.
+ 8899-FIM-FINALIZE. EXIT.
+ 
+ 
+ 
+ *----------------------------------------------------------------*
+ 3000-FINALIZA 					SECTION.
+ 
+	CLOSE ARQ-CLIENTES
+	      ARQ-IMPORT-CLI
+
+	GO BACK
+	.
+ 99999-FIM-FINALIZE. EXIT.
+ 
+ 

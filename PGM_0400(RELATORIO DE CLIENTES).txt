@@ -1,0 +1,344 @@
+
+*----------------------------------------------------------------*
+ IDENTIFICATION 				DIVISION.
+ PROGRAM-ID. 					PGM_0400.
+*----------------------------------------------------------------*
+ ENVIRONMENT 					DIVISION.
+ CONFIGURATION 					SECTION.
+*----------------------------------------------------------------*
+ SPECIAL-NAMES.
+ 	DECIMAL-POINT 				IS COMMA.
+
+ INPUT-OUTPUT					SECTION.
+
+ FILE-CONTROL.
+    SELECT ARQ-CLIENTES ASSIGN TO DISK WID-ARQ-CLIENTES
+    ORGANIZATION                IS INDEXED
+    ACESS MODE                  IS DYNAMIC
+	RECORD-KEY                  IS AS-ARQCLI-CNPJ
+	AKTERNATIVE-KEY 			IS AS-ARQCLI-COD-CLI
+    LOCK MODE                   IS MANUAL
+    FILE STATUS                 IS AS-RESULTADO-ENTRADA-CLI.
+	
+	SELECT SORT-CLI ASSIGN TO "SORT-CLI.DAT"
+	SORT STATUS IS FS-SORT-CLI
+
+*----------------------------------------------------------------*
+ DATA 							DIVISION.
+
+    FILE 						SECTION.
+    
+    COPY ARQ-CLIENTES.
+	
+	SD SORT-CLI
+	01 SORT-REG-CLIENTES 
+	   10 SORT-COD-CLI          PIC  9(007).
+	   10 SORT-RAZAO-CLI        PIC  X(040).
+	   10 SORT-COD-VEND-CLI     PIC  9(007).
+	   
+
+ WORKING-STORAGE 				SECTION.
+*----------------------------------------------------------------*
+    
+    01  VARIAVEIS-WORKING.
+		05 AS-VAR-RELATORIOS OCCURS 15 TIMES
+			10 AS-COD-CLI          PIC  9(007).
+			10 AS-RAZAO-CLI        PIC  X(040).
+			10 AS-COD-VEND         PIC  9(007).
+			
+	01 AS-RESULTADO-ENTRADA-CLI.
+        05 AS-FS-ENTRADA-CLI     PIC  X(002).
+		05 AS-FS-SORT-CLI        PIC  X(002).
+		05 AS-CONT               PIC  9(003).		
+		
+	01 AS-AUXILIARES		
+		05 AS-MSG-TELA			PIC  X(060) VALUE SPACES.  
+		05 AS-OPCAO-TELA		PIC  9(001) VALUE ZEROS.
+		
+	01-RELATORIO          	
+	
+	SCREEN 					SECTION.
+	
+	COPY TELA-0400-1.
+   
+   	COPY TELA-0400-2.    
+
+	COPY ARQ-CLIENTES.	
+    
+    
+*----------------------------------------------------------------*
+ PROCEDURE DIVISION				USING AS-MSG-TELA.
+
+ 00000-PRINCIPAL SECTION.
+
+ 	PERFORM 10000-INICIALIZA
+	
+	PERFORM 20000-PROCESSA
+	
+	PERFORM 90000-FINALIZA
+ 	.
+ 99999-FIM-PRINCIPAL.            EXIT.
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 10000-INICIALIZA SECTION.
+           
+ 	INITIALIZE VARIAVEIS-WORKING
+
+	OPEN ARQ-CLIENTES
+
+	DISPLAY ERASE
+
+	PERFORM 11000-MOSTRA-TELA
+	
+    .
+  19999-FIM-INICIALIZA.            EXIT.
+  
+*----------------------------------------------------------------*
+* MOSTRA TELA 
+*----------------------------------------------------------------*
+ 11000-MOSTRA-TELA             SECTION.
+           
+ 	DISPLAY TELA-0400-1
+    
+    ACCEPT TELA-0400-1
+	
+	PERFORM 11100-VALIDA-TELA
+	
+    .
+  11999-FIM-INICIA.            EXIT.  
+  
+*----------------------------------------------------------------*
+* VALIDA INFORMAÇÕES DIGITADAS PELO USUARIO
+*----------------------------------------------------------------*
+ 11100-VALIDA-TELA            SECTION.
+
+	IF  (AS-OPCAO-ORDENACAO NOT EQUAL 1 OR 2)
+	OR  (AS-OPÇÃO-CLASSIFICACAO NOT EQUAL 1 OR 2)
+	   	MOVE 'SELECIONE AS OPÇÕES ORDENAÇÃO E CLASSIFICACA' TO AS-MSG-ERRO
+	    PERFORM 11100-MOSTRA-TELA
+	ELSE
+ 
+		IF   AS-OPCAO-COD-CLI          NOT EQUAL ZEROS
+		AND	 AS-OPCAO-RAZAO-SOCIAL     NOT EQUAL SPACES
+		AND  AS-OPCAO-CODIGO-VENDEDOR  NOT EQUAL ZEROS
+			 MOVE 1                   TO AS-TIPO-PESQUISA
+		ELSE
+			IF   AS-OPCAO-COD-CLI          NOT EQUAL ZEROS
+			AND	 AS-OPCAO-RAZAO-SOCIAL     NOT EQUAL SPACES
+				 MOVE 2                   TO AS-TIPO-PESQUISA
+			ELSE
+				IF  AS-OPCAO-COD-CLI        NOT EQUAL ZEROS
+				AND AS-OPCAO-COD-VEND	   NOT EQUAL ZEROS
+					MOVE 3                 TO AS-TIPO-PESQUISA
+				ELSE 		
+					IF  AS-OPCAO-COD-CLI    NOT EQUAL ZEROS
+						MOVE 4             TO AS-TIPO-PESQUISA 
+					ELSE 		
+						IF  AS-OPCAO-RAZAO-SOCIAL     NOT EQUAL SPACES
+							AND AS-OPCAO-COD-VEND         NOT EQUAL ZEROS
+							MOVE 5                    TO AS-TIPO-PESQUISA 
+						ELSE			
+							IF  AS-OPCAO-RAZAO-SOCIAL NOT EQUAL SPACES
+								MOVE 6               TO AS-TIPO-PESQUISA
+							ESLE 
+								IF AS-OPCAO-COD-VEND  NOT EQUAL ZEROS
+								   MOVE 7            TO AS-TIPO-PESQUISA
+								ESLE 
+								   MOVE 8            TO AS-TIPO-PESQUISA
+								END-IF	
+							END-IF					 
+						END-IF
+					END-IF
+				END-IF
+			END-IF
+		END-IF
+	END-IF		
+	
+	READ ARQ-CLIENTES
+	.
+
+    11999-FIM-VALIDA-TELA	
+
+*----------------------------------------------------------------*
+* PROCESSA 
+*----------------------------------------------------------------*
+ 20000-PROCESSA		 		 SECTION.
+ 
+	EVALUATE AS-OPCAO-ORDENACAO 
+	
+	    WHEN 1
+		    
+			 EVALUATE AS-OPCAO-CLASSIFICACAO
+				
+					WHEN 1
+					   
+	                     INPUT PROCEDURE IS 30000-PROCESSA-ENTRADA-SORT UNTIL AS-FS-ENTRADA-CLI 	
+	                                     NOT EQUAL '00'
+						 OUTPUT PROCEDURE IS 40000-DESCARREGAR-REL 
+						 
+					WHEN 2	 
+	
+	                     SORT SORT-CLI ASCENDING  SORT-RAZAO-CLI
+						 INPUT PROCEDURE IS 30000-PROCESSA-ENTRADA-SORT UNTIL AS-FS-ENTRADA-CLI 	
+	                                     NOT EQUAL '00'
+						 OUTPUT PROCEDURE IS 40000-DESCARREGAR-REL 
+			END-EVALUATE
+			
+		WHEN 2
+		    
+			 EVALUATE AS-OPCAO-CLASSIFICACAO
+				
+					WHEN 1
+					   
+	                     SORT SORT-CLI DESCENDING  SORT-COD-CLI
+						 INPUT PROCEDURE IS 30000-PROCESSA-ENTRADA-SORT UNTIL AS-FS-ENTRADA-CLI 	
+	                                     NOT EQUAL '00'
+						 OUTPUT PROCEDURE IS 40000-DESCARREGAR-REL  
+						 
+					WHEN 2	 
+	
+	                     SORT SORT-CLI ASCENDING  SORT-RAZAO-CLI
+					     INPUT PROCEDURE IS 30000-PROCESSA-ENTRADA-SORT UNTIL AS-FS-ENTRADA-CLI 	
+	                                     NOT EQUAL '00'
+					     OUTPUT PROCEDURE IS 40000-DESCARREGAR-REL 
+			END-EVALUATE	
+	END-EVALUATE		
+
+    .
+	
+ 29999-FIM-PROCESSA
+*----------------------------------------------------------------*
+* PROCESSA ARQUIVO PARA MONTAR RELATORIO DE ACORDO COM O FILTRO
+*----------------------------------------------------------------*
+ 30000-PROCESSA-ENTRADA-SORT 		 SECTION.
+
+	EVALUATE AS-TIPO-PESQUISA
+	
+    WHEN 1
+	     		
+	    IF   AS-OPCAO-COD-CLI         EQUAL AS-ARQCLI-COD-CLI	
+	    AND  AS-OPCAO-RAZAO-SOCIAL    EQUAL AS-ARQ-CLI-RAZAO
+	    AND  AS-OPCAO-CODIGO-VENDEDOR EQUAL AS-ARQU-COD-VENDEDOR
+		     MOVE AS-ARQCLI-COD-CLI   TO SORT-COD-CLI
+		     MOVE AS-ARQCLI-RAZAO     TO SORT-RAZAO-CLI	
+		     MOVE AS-ARQCLI-COD-VEND  TO SORT-COD-VEND-CLI	
+		     RELEASE  SORT-REG-CLIENTES 		
+	    END-IF
+    
+	WHEN 2
+	
+	    IF   AS-OPCAO-COD-CLI         EQUAL AS-ARQCLI-COD-CLI	
+	    AND  AS-OPCAO-RAZAO-SOCIAL    EQUAL AS-ARQ-CLI-RAZAO
+	         MOVE AS-ARQCLI-COD-CLI   TO SORT-COD-CLI
+		     MOVE AS-ARQCLI-RAZAO     TO SORT-RAZAO-CLI	
+		     MOVE AS-ARQCLI-COD-VEND  TO SORT-COD-VEND-CLI	
+			 RELEASE  SORT-REG-CLIENTES	
+	    END-IF
+    
+	
+    WHEN 3
+	
+	    IF   AS-OPCAO-COD-CLI         EQUAL AS-ARQCLI-COD-CLI	
+	    AND  AS-OPCAO-CODIGO-VENDEDOR EQUAL AS-ARQU-COD-VENDEDOR
+		     MOVE AS-ARQCLI-COD-CLI   TO SORT-COD-CLI
+		     MOVE AS-ARQCLI-RAZAO     TO SORT-RAZAO-CLI	
+		     MOVE AS-ARQCLI-COD-VEND  TO SORT-COD-VEND-CLI
+			 RELEASE  SORT-REG-CLIENTES	
+	    END-IF
+    
+	WHEN 4
+	
+	    IF   AS-OPCAO-COD-CLI         EQUAL AS-ARQCLI-COD-CLI	
+	         MOVE AS-ARQCLI-COD-CLI   TO SORT-COD-CLI
+		     MOVE AS-ARQCLI-RAZAO     TO SORT-RAZAO-CLI	
+		     MOVE AS-ARQCLI-COD-VEND  TO SORT-COD-VEND-CLI
+			 RELEASE  SORT-REG-CLIENTES	
+	    END-IF
+		
+    WHEN 5
+	
+	    IF  AS-OPCAO-RAZAO-SOCIAL     EQUAL AS-ARQCLI-RAZAO
+	    AND  AS-OPCAO-CODIGO-VENDEDOE EQUAL AS-ARQU-COD-VENDEDOR
+		     MOVE AS-ARQCLI-COD-CLI   TO SORT-COD-CLI
+		     MOVE AS-ARQCLI-RAZAO     TO SORT-RAZAO-CLI	
+		     MOVE AS-ARQCLI-COD-VEND  TO SORT-COD-VEND-CLI
+			 RELEASE  SORT-REG-CLIENTES	
+	    END-IF
+		
+    WHEN 6
+		    
+	    IF  AS-OPCAO-RAZAO-SOCIAL    EQUAL AS-ARQCLI-RAZAO
+	         MOVE AS-ARQCLI-COD-CLI   TO SORT-COD-CLI
+		     MOVE AS-ARQCLI-RAZAO     TO SORT-RAZAO-CLI	
+		     MOVE AS-ARQCLI-COD-VEND  TO SORT-COD-VEND-CLI
+			 RELEASE  SORT-REG-CLIENTES	
+	    END-IF
+		
+    WHEN 7
+	
+	    IF   AS-OPCAO-CODIGO-VENDEDOE EQUAL AS-ARQU-COD-VENDEDOR
+		     MOVE AS-ARQCLI-COD-CLI   TO SORT-COD-CLI
+		     MOVE AS-ARQCLI-RAZAO     TO SORT-RAZAO-CLI	
+		     MOVE AS-ARQCLI-COD-VEND  TO SORT-COD-VEND-CLI
+			 RELEASE  SORT-REG-CLIENTES	
+	    END-IF
+		
+	WHEN 8
+	
+	         MOVE AS-ARQCLI-COD-CLI   TO SORT-COD-CLI
+		     MOVE AS-ARQCLI-RAZAO     TO SORT-RAZAO-CLI	
+		     MOVE AS-ARQCLI-COD-VEND  TO SORT-COD-VEND-CLI
+			 RELEASE  SORT-REG-CLIENTES	
+	
+	END-EVALUATE	
+	     
+	READ ARQ-CLIENTES	
+	
+    .	
+ 29999-FIM-PROCESSA.            	EXIT.
+ 
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 40000-DESCARREGAR-REL 				SECTION.
+ 
+	PERFORM 31000-DESCARREGA-SORT UNTIL FS-SORT-CLI EQUAL "10"
+	                              OR AS-CONT GREATER THAN 15
+	
+		
+	DISPLAY TELA-0400-2
+		
+	.
+ 39999-FIM-DESCARREGA-RELATORIO. EXIT.
+ 
+ *----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 31000-DESCARREGA-SORT               SECTION.
+ 
+	ADD 1                   		  TO  AS-CONT
+	
+	RETURN SORT-CLI AT END MOVE "10"  TO FS-SORT-CLI
+
+	MOVE SORT-COD-CLI                 TO  AS-COD-CLI(AS-CONT)
+	MOVE SORT-RAZAO-CLI               TO  AS-RAZAO-CLI(AS-CONT)
+	MOVE SORT-COD-VEND-CLI            TO  AS-COD-VEND(AS-CONT)
+	
+	.
+ 31999-FIM-DESCARREGA-SORT. EXIT.
+ 
+  
+  
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 90000-FINALIZA SECTION.
+ 
+	CLOSE ARQ-CLIENTES
+
+	GO BACK
+	.
+ 99999-FIM-FINALIZE. EXIT.
+ 
+ 

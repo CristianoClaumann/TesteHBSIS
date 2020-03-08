@@ -1,0 +1,134 @@
+* PROGRAMA PARA GERENCIAR CARTEIRA DE CLIENTES
+*----------------------------------------------------------------*
+ IDENTIFICATION 				DIVISION.
+ PROGRAM-ID. 					PGM_0101.
+*----------------------------------------------------------------*
+ ENVIRONMENT 					DIVISION.
+ CONFIGURATION 					SECTION.
+*----------------------------------------------------------------*
+ SPECIAL-NAMES.
+ 	DECIMAL-POINT 				IS COMMA.
+
+ INPUT-OUTPUT					SECTION.
+
+*----------------------------------------------------------------*
+ DATA 							DIVISION.
+
+    FILE 						SECTION.
+      
+
+ WORKING-STORAGE 				SECTION.
+*----------------------------------------------------------------*
+    
+SCREEN 					SECTION.
+	
+	COPY TELA0101.		
+	   
+*----------------------------------------------------------------*
+ PROCEDURE DIVISION.
+
+ 0000-PRINCIPAL SECTION.
+
+ 	PERFORM 1000-INICIALIZA
+	
+	PERFORM 2000-PROCESSA
+	
+	PERFORM 3000-FINALIZA
+										 
+ 	.
+ 99999-FIM-PRINCIPAL.            EXIT.
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 1000-INICIA 					SECTION.
+           
+ 	INITIALIZE TEL-0101
+
+	DISPLAY ERASE
+
+	PERFORM 1100-MOSTRA-TELA
+	
+    .
+  19999-FIM-INICIA.            EXIT.
+  
+*----------------------------------------------------------------*
+* MOSTRA TELA 
+*----------------------------------------------------------------*
+ 1100-MOSTRA-TELA             SECTION.
+           
+ 	DISPLAY TEL-0101
+    
+    ACCEPT AS-CAMPO-TELA
+	
+	PERFORM 1110-VALIDA-TELA-PGM-0101
+	
+    .
+  1199-FIM-INICIA.            EXIT.  
+  
+*----------------------------------------------------------------*
+* VALIDA A OPCAO DIGITADA PELO USUARIO
+*----------------------------------------------------------------*
+ 1110-VALIDA-TELA-PGM-0101    SECTION.
+
+	IF  (AS-CAMPO-TELA NOT NUMERIC)
+	OR  (AS-CAMPO-TELA NOT LESS 6 )
+	OR  (AS-CAMPO-TELA EQUAL ZEROS)
+	   	MOVE 'OPCAO INVALIDA'    TO AS-MSG-TELA
+	    PERFORM 1110-MOSTRA-TELA
+	END-IF
+	.
+
+ 1199-FIM-VALIDA-TELA-REL	
+
+*----------------------------------------------------------------*
+* PROCESSA DE ACORDO COM A OPCAO CHAMA PGM DE CAD DE CLI OU VEND
+*----------------------------------------------------------------*
+ 2000-PROCESSA  SECTION.
+
+	EVALUATE AS-CAMPO-TELA
+	
+	
+*CADASTRO DE CLIENTES (I/A/E/IMPORTAR)	
+    WHEN 1
+
+	    CALL PGM_0200   
+
+*CADASTRO DE VENDEDORES(I/A/E/IMPORTAR)			
+
+	WHEN 2
+
+	    CALL PGM_0300
+		
+*RELATORIO DE CLIENTES
+
+	WHEN 3
+	
+	    CALL PGM_0400
+		
+*RELATORIO DE VENDEDORES
+	
+	WHEN 4
+
+	    CALL PGM_0500
+		
+*EXECUTAR DISTRIBUICAO DE CLIENTES
+	
+	WHEN 5
+
+	    CALL PGM_0600
+		
+	END-EVALUATE	
+	     
+    .	
+ 2999-FIM-PROCESSA.            	EXIT.
+ 
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 3000-FINALIZA 					SECTION.
+
+	GO BACK
+	.
+ 99999-FIM-FINALIZE. EXIT.
+ 
+ 

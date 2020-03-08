@@ -1,0 +1,172 @@
+* CADASTRO DE VENDEDORES INCLUIR/ ALTERAR / EXCLUIR E IMPORTAR
+*----------------------------------------------------------------*
+ IDENTIFICATION 				DIVISION.
+ PROGRAM-ID. 					PGM_0600.
+*----------------------------------------------------------------*
+ ENVIRONMENT 					DIVISION.
+ CONFIGURATION 					SECTION.
+*----------------------------------------------------------------*
+ SPECIAL-NAMES.
+ 	DECIMAL-POINT 				IS COMMA.
+
+ INPUT-OUTPUT					SECTION.
+
+ FILE-CONTROL.
+    
+	SELECT ARQ-CLIENTES ASSIGN TO DISK WID-ARQ-CLIENTES
+		ORGANIZATION                IS INDEXED
+		ACESS MODE                  IS DYNAMIC
+		RECORD-KEY                  IS AS-CNPJ-CLI
+		LOCK MODE                   IS MANUAL
+		FILE STATUS                 IS W-RESULTADO-CLIENTE.	
+	
+	
+	SELECT ARQ-VENDEDORES ASSIGN TO DISK WID-ARQ-VENDEDORES
+		ORGANIZATION                IS INDEXED
+		ACESS MODE                  IS DYNAMIC
+		RECORD-KEY                  IS AS-CPF-VEND
+		LOCK MODE                   IS MANUAL
+		FILE STATUS                 IS W-RESULTADO-VENDEDORES.
+		
+	
+	SELECT ARQ-DIST      ASSIGN  TO DISK WID-ARQ-SAIDA-DIST
+        ORGANIZATION            	IS INDEXED
+        ACESS MODE              	IS SEQUENCIAL
+        RECORD-KEY              	IS AS-ARQ-SAIDA-COD-CLI
+        LOCK MODE               	IS MANUAL
+        FILE STATUS             	IS W-RESULTADO-SAIDA.
+
+ 
+*----------------------------------------------------------------*
+ DATA 							DIVISION.
+
+    FILE 						SECTION.
+	
+	COPY ARQ-VEND
+	
+	COPY ARQ-CLI.
+	
+	COPY ARQ-DIST.
+	
+	COPY CALC-DISTANCIA.
+	
+
+ WORKING-STORAGE 				SECTION.
+*----------------------------------------------------------------*
+    
+    01 W-RESULTADO-VENDEDORES.
+        05 AS-FS-VEND                  PIC  X(002).
+		
+    01 W-RESULTADO-CLIENTE.
+        05 AS-FS-CLI                   PIC  X(002).
+		
+	01 W-RESULTADO-SAIDA.
+        05 AS-FS-SAIDA                 PIC  X(002).
+			
+	01 AS-AUXILIARES		
+	   05 AS-DIST-METROS-AUX            PIC  9(005) VALUE ZEROS.
+		
+	01 AS-CPF-VALIDA.	
+		05 AS-VALIDA-CPF               PIC  9(014) VALUE ZEROS.
+		
+		
+	01 AS-DISTANCIA.	
+		05 AS-LAT-CLI                  S9(003)V9(008).
+		05 AS-LONG-CLI                 S9(003)V9(008).
+		05 AS-LAT-VEND                 S9(003)V9(008).
+		05 AS-LONG-VEND                S9(003)V9(008).
+		05 AS-DIST-MTS-CALC            9(009).
+	
+	SCREEN 					SECTION.
+	
+	
+	COPY TELA-0100.		
+	   
+*----------------------------------------------------------------*
+ PROCEDURE DIVISION                 USING VARIAVEIS-LINKAGE.
+
+ 0000-PRINCIPAL SECTION.
+
+ 	PERFORM 1000-INICIALIZA
+	
+	PERFORM 2000-PROCESSA UNTIL AS-FS-CLI EQUAL '10'
+	
+	PERFORM 3000-FINALIZA
+										 
+ 	.
+ 99999-FIM-PRINCIPAL.            EXIT.
+*----------------------------------------------------------------*
+
+*----------------------------------------------------------------*
+ 1000-INICIALIZA 			     SECTION.
+           
+ 	OPEN INPUT	ARQ-VENDEDORES
+	            ARQ-CLIENTES
+		OUTPUT  ARQ-DIST
+		
+	INITIALIZE AS-DISTANCIA	
+		
+		
+	READ 	ARQ-VENDEDORES
+		    ARQ-CLIENTES
+			
+	.
+  19999-FIM-INICIALIZA.            EXIT.
+  
+*----------------------------------------------------------------*
+* PROCESSA DISTRIBUIÇÃO DE CLIENTES PARA VENDEDORES              *
+*----------------------------------------------------------------*
+ 2000-PROCESSA  SECTION.
+
+	MOVE ARQ-LAT-CLI            TO AS-LAT-CLI
+	MOVE ARQ-LONG-CLI           TO AS-LONG-CLI	
+    MOVE HIGH-VALUES            TO AS-DIST-METROS-AUX
+ 
+	PERFORM 2100-PROCESSA-DISTR	
+		        UNTIL AS-FS-VEND EQUAL '10'
+					
+	WRITE ARQ-DIST	
+		
+	CLOSE 	ARQ-VENDEDORES
+	READ    ARQ-CLIENTES
+	        ARQ-VENDEDORES
+	     
+    .	
+ 2999-FIM-PROCESSA.            	EXIT.
+ 
+*----------------------------------------------------------------*
+* INCLUSAO DE VENDEDORES
+*----------------------------------------------------------------*
+ 2100-PROCESSA-DISTR       		SECTION.
+	
+	MOVE ARQ-LAT-VEND           TO AS-LAT-VEND
+	MOVE ARQ-LONG-VEND          TO AS-LONG-VEND
+	
+	CALL DIST-METROS  			USING AS-DISTANCIA
+	
+	IF AS-DIST-MTS-CALC         LESS AS-DIST-MTS-AUX
+	   MOVE AS-DIST-MTS-AUX     TO AS-DIST-METROS
+	   MOVE ARQ-COD-CLI         TO ARQ-COD-CLI-SAIDA
+	   MOVE ARQ-RAZAO-CLI       TO ARQ-RAZAO-CLI-SAIDA
+	   MOVE ARQ-COD-VEND        TO ARQ-COD-VEND-SAIDA
+	   MOVE ARQ-NOME-VEND       TO ARQ-NOME-VEND-SAIDA
+	END-IF   
+	
+	READ ARQ-VENDEDORES   
+	
+     	.
+ 2199-FIM-FINALIZE. EXIT.
+  
+
+ *----------------------------------------------------------------*
+ 3000-FINALIZA 					SECTION.
+ 
+	CLOSE ARQ-VENDEDORES
+	      ARQ-CLIENTES
+		  ARQ-DIST
+
+	GO BACK
+	.
+ 99999-FIM-FINALIZE. EXIT.
+ 
+ 
